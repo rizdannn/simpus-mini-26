@@ -18,11 +18,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 csrf_verify();
 
-$id = $_POST['id'] ?? null;
+$id = (int) ($_POST['id'] ?? 0);
 if ($id) {
-    $stmt = $pdo->prepare("DELETE FROM buku WHERE id = :id");
-    $stmt->execute(['id' => $id]);
-    $_SESSION['flash'] = ['type' => 'success', 'pesan' => 'Buku berhasil dihapus.'];
+    try {
+        $stmt = $pdo->prepare("DELETE FROM buku WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $_SESSION['flash'] = ['type' => 'success', 'pesan' => 'Buku berhasil dihapus.'];
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23503') {
+            $pesan = 'Buku tidak bisa dihapus karena masih tercatat di riwayat peminjaman.';
+        } else {
+            error_log('Gagal menghapus buku: ' . $e->getMessage());
+            $pesan = 'Terjadi kesalahan saat menghapus data. Silakan coba lagi.';
+        }
+        $_SESSION['flash'] = ['type' => 'error', 'pesan' => $pesan];
+    }
 }
 
 header('Location: list.php');
